@@ -16,7 +16,7 @@ public:
 
 	void Execute(RenderContext& ctx, Scene* scene, Camera2D* camera) override
 	{
-		ctx.ClearColor(0.1f, 0.1f, 0.1f, 1.f);
+		ctx.ClearColor(1.0f, 0.1f, 0.1f, 1.f);
 		ctx.Clear();
 
 		ctx.Render(*scene, *camera);

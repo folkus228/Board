@@ -3,8 +3,6 @@
 #include <fstream>
 #include "ShaderProgram.h"
 
-// ›“¿œ 1
-
 ShaderProgram::ShaderProgram()
 	: _programID(glCreateProgram())
 {}

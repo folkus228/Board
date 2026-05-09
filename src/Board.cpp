@@ -14,7 +14,7 @@
 int main() {
     // 1. GLFW & GLAD
     if (!glfwInit()) return -1;
-    GLFWwindow* window = glfwCreateWindow(800, 600, "ImGui+GLM+GLAD+GLFW Test", NULL, NULL);
+    GLFWwindow* window = glfwCreateWindow(800, 450, "ImGui+GLM+GLAD+GLFW Test", NULL, NULL);
     if (!window) { glfwTerminate(); return -1; }
     glfwMakeContextCurrent(window);
     if (!gladLoadGLLoader((GLADloadproc)glfwGetProcAddress)) return -1;
@@ -39,7 +39,7 @@ int main() {
     {
         float x;
         float y;
-        float z;
+        //float z;
         unsigned char r;
         unsigned char g;
         unsigned char b;
@@ -47,39 +47,50 @@ int main() {
     };
 
     PointData pointData[] = {
-        {-0.5f, -0.5f, -0.5f, 255, 255, 255, 255 },    // Нижний левый передний - 0
-        { 0.5f, -0.5f, -0.5f, 255, 255, 0  , 255 },    // Нижний правый передний - 1
-        { 0.5f,  0.5f, -0.5f, 255, 255, 255, 255 },    // Верхний правый передний - 2
-        {-0.5f,  0.5f, -0.5f, 255, 255, 0  , 255 }     // Верхний левый передний - 3
+        {-0.5f, -0.5f, /*-0.5f,*/ 255, 255, 255, 255 },    // Нижний левый передний - 0
+        { 0.5f, -0.5f, /*-0.5f,*/ 255, 255, 0  , 255 },    // Нижний правый передний - 1
+        { 0.5f,  0.5f, /*-0.5f,*/ 255, 255, 255, 255 },    // Верхний правый передний - 2
+        {-0.5f,  0.5f, /*-0.5f,*/ 255, 255, 0  , 255 }     // Верхний левый передний - 3
     };
 
     GLuint indices[] = {
         0, 1, 2,
         0, 2, 3
     };
-    Mesh cubeMesh(GL_TRIANGLES, 4, &indices);
+    Mesh cubeMesh(GL_TRIANGLES, 6); // в нинциализаторе и так USE прописывается
     cubeMesh.Use();
-    cubeMesh.AddData(&pointData, sizeof(pointData));
-    cubeMesh.PreCompile();
-    cubeMesh.Compile(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float) + 4 * sizeof(unsigned char), (void*)0,
-        1, 4, GL_UNSIGNED_BYTE, GL_TRUE, 3 * sizeof(float) + 4 * sizeof(unsigned char), (void*)(3 * sizeof(float)));
+    cubeMesh.AddData(pointData, sizeof(pointData));
+    cubeMesh.AddIndices(indices);
+    cubeMesh.Compile(0, 2, GL_FLOAT, GL_FALSE, sizeof(PointData), (void*)0,
+        1, 4, GL_UNSIGNED_BYTE, GL_TRUE, sizeof(PointData), (void*)(2 * sizeof(float)));
 
     Shader baseShader;
-    std::string pathToBaseVert = "../res/shaders/base.vert";
-    std::string pathToBaseFrag = "../res/shaders/base.frag";
+    std::string pathToBaseVert = "C:/all/proj/VisualStudio/Board/res/shaders/base.vert";
+    std::string pathToBaseFrag = "C:/all/proj/VisualStudio/Board/res/shaders/base.frag";
     baseShader.LoadShaderFromFile(GL_VERTEX_SHADER, pathToBaseVert);
     baseShader.LoadShaderFromFile(GL_FRAGMENT_SHADER, pathToBaseFrag);
     baseShader.CompileProgram();
 
     // 6. Scene and Objects
     Transform2D baseTransform;
-    Camera2D camera{ baseTransform };
+    Camera2D camera{ baseTransform, 10.0f };
     Object cube{ baseTransform };
-    
+    Object cube2{ baseTransform };
+    cube2.t.SetParent(&cube.t);
+
     Scene scene;
     scene.AddObj(&camera);
     scene.AddObj(&cube);
     scene.AddRenderUnit(&cube, &cubeMesh, &baseShader);
+    scene.AddRenderUnit(&cube2, &cubeMesh, &baseShader);
+
+    // 7 Test Fiches
+    glm::vec2 pos1{ 0.0, 0.0 };
+    glm::vec2 pos2{ 0.0, 0.0 };
+    float rot1 = 0;
+    float rot2 = 0;
+    glm::vec2 scale1{ 1.0, 1.0 };
+    glm::vec2 scale2{ 1.0, 1.0 };
 
     while (!glfwWindowShouldClose(window)) {
         glfwPollEvents();
@@ -93,6 +104,20 @@ int main() {
         ImGui::Begin("Settings");
         ImGui::Text("GLM & ImGui Integration");
         ImGui::ColorEdit3("Background", &clear_color.x); // Прямая привязка к glm::vec3
+        ImGui::Text("Cube 1");
+        if (ImGui::DragFloat2("##pos1", &pos1.x, 0.1, -5, 5))
+            cube.t.SetLocalPXY(pos1);
+        if (ImGui::DragFloat("##rot1", &rot1, 0.1, -360, 360))
+            cube.t.SetLocalRotation(rot1);
+        if (ImGui::DragFloat2("##scale1", &scale1.x, 0.1, -5, 5))
+            cube.t.SetLocalScale(scale1);
+        ImGui::Text("Cube 2");
+        if (ImGui::DragFloat2("##pos2", &pos2.x, 0.1, -5, 5))
+            cube2.t.SetLocalPXY(pos2);
+        if (ImGui::DragFloat("##rot2", &rot2, 0.1, -360, 360))
+            cube2.t.SetLocalRotation(rot2);
+        if (ImGui::DragFloat2("##scale2", &scale2.x, 0.1, -5, 5))
+            cube2.t.SetLocalScale(scale2);
         ImGui::End();
 
         // Rendering

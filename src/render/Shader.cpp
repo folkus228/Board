@@ -103,7 +103,7 @@ void Shader::ApplyUniforms() {
     }
 }
 
-inline void Shader::Use()
+void Shader::Use()
 {
     _shaderProgram.Use();
 }

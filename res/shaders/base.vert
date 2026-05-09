@@ -1,30 +1,25 @@
-#version 330 core
+#version 450 core
 
 layout (location = 0) in vec2 aPos;
-layout (location = 1) in vec2 aTexCoord;
+layout (location = 1) in vec4 aColor;
 
-// Данные передаются для каждого объекта отдельно перед glDraw...
-uniform vec3 uPosition;    // x, y, z
-uniform float uRotation; // угол в радианах
-uniform vec2 uScale;     // ширина, высота
+out vec4 vColor;
+
+uniform vec3 uPosition;
+uniform float uRotation;
+uniform vec2 uScale;
 
 uniform mat4 uViewProj;
 
-out vec2 TexCoord;
-
 void main() {
-    // 1. Масштабируем локальные координаты вершины
-    vec2 pos = aPos * uScale;
-
-    // 2. Поворачиваем
-    float s = sin(uRotation);
-    float c = cos(uRotation);
-    mat2 rotMat = mat2(c, s, -s, c);
-    pos = rotMat * pos;
-
-    // 3. Сдвигаем и проецируем
-    // uPosition.z отвечает за глубину в 2D (Z-buffer)
-    gl_Position = uViewProj * vec4(pos + uPosition.xy, uPosition.z, 1.0);
-    
-    TexCoord = aTexCoord;
+    vColor = aColor;
+    vec2 scaledPos = aPos * uScale;
+    float cosR = cos(uRotation);
+    float sinR = sin(uRotation);
+    vec2 rotatedPos = vec2(
+        scaledPos.x * cosR - scaledPos.y * sinR,
+        scaledPos.x * sinR + scaledPos.y * cosR
+    );
+    vec4 worldPos = vec4(rotatedPos + uPosition.xy, uPosition.z, 1.0);
+    gl_Position = uViewProj * worldPos;
 }
