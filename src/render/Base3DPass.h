@@ -9,14 +9,15 @@ protected:
 
 	void Init(RenderContext& ctx) override
 	{
+		ctx.ApplyTestFiches();
 		ctx.Enable3DFilter();
-		ctx.EnableBlend();
+		//ctx.EnableBlend();
 	}
 public:
 
 	void Execute(RenderContext& ctx, Scene* scene, Camera2D* camera) override
 	{
-		ctx.ClearColor(1.0f, 0.1f, 0.1f, 1.f);
+		ctx.ClearColor(0.1f, 0.1f, 0.1f, 1.f);
 		ctx.Clear();
 
 		ctx.Render(*scene, *camera);

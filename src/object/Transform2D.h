@@ -32,7 +32,7 @@ public:
     }
     void SetLocalRotation(float newRotation)
     {
-        _localRotation = std::fmod(newRotation, PI2);
+        _localRotation = std::fmod(glm::radians(newRotation), PI2);
         _eventSetRot.emit();
     }
     void SetLocalScale(glm::vec2 newScale)

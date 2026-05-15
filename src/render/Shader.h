@@ -12,6 +12,8 @@
 
 // Вся логика и обработка инофрмации из ShaderProgram
 
+class Material;
+
 // Enum для типов uniform'ов
 enum class UniformType {
     FLOAT,
@@ -66,8 +68,6 @@ public:
     template<typename T>
     void SetUniform(const std::string& name, const T& value);
     template<typename T>
-    void SetUniform(const std::string&& name, const T& value);
-    template<typename T>
     void SetUniform(const std::string& name, const T&& value);
     template<typename T>
     void SetUniform(const std::string&& name, const T&& value);
@@ -80,6 +80,7 @@ public:
     //UniformValue GetUniformValue(const std::string& name) const;
 
     UniformType GLTypeToUniformType(GLenum glType);
+    friend Material;
 };
 
 template<typename T>
@@ -131,55 +132,7 @@ void Shader::SetUniform(const std::string& name, const T& value) {
     _uniformData[name].isDirty = true;
 }
 
-template<typename T>
-void Shader::SetUniform(const std::string&& name, const T& value) {
-
-#ifdef _DEBUG
-    auto typeIt = _uniformData.find(name);
-    if (typeIt == _uniformData.end()) return;
-
-    UniformType expectedType = typeIt->second.type;
-
-    if constexpr (std::is_same_v<T, float>) {
-        if (expectedType != UniformType::FLOAT) return;
-    }
-    else if constexpr (std::is_same_v<T, int>) {
-        if (expectedType != UniformType::INT) return;
-    }
-    else if constexpr (std::is_same_v<T, bool>) {
-        if (expectedType != UniformType::BOOL) return;
-    }
-    else if constexpr (std::is_same_v<T, glm::vec2>) {
-        if (expectedType != UniformType::VEC2) return;
-    }
-    else if constexpr (std::is_same_v<T, glm::vec3>) {
-        if (expectedType != UniformType::VEC3) return;
-    }
-    else if constexpr (std::is_same_v<T, glm::vec4>) {
-        if (expectedType != UniformType::VEC4) return;
-    }
-    else if constexpr (std::is_same_v<T, glm::mat3>) {
-        if (expectedType != UniformType::MAT3) return;
-    }
-    else if constexpr (std::is_same_v<T, glm::mat4>) {
-        if (expectedType != UniformType::MAT4) return;
-    }
-    else if constexpr (std::is_same_v<T, GLuint>) {
-        if (expectedType != UniformType::SAMPLER2D &&
-            expectedType != UniformType::SAMPLERCUBE) return;
-    }
-    else
-    {
-        std::cout << "\033[90m" << "parameter \"" << typeIt->first << "\" passes an "
-            << "\033[91m" << "unsupported" << "\033[90m"
-            << " type" << "\033[0m" << std::endl;
-        return;
-    }
-#endif
-    _uniformData[name].value = value;
-    _uniformData[name].isDirty = true;
-}
-
+// только эту оставить
 template<typename T>
 void Shader::SetUniform(const std::string& name, const T&& value) {
 

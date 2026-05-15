@@ -70,15 +70,11 @@ UniformType Shader::GLTypeToUniformType(GLenum glType) {
 }
 
 void Shader::ApplyUniforms() {
-    for (const auto& [name, LAD] : _uniformData) {
+    for (auto& [name, LAD] : _uniformData) {
         if (!LAD.isDirty) continue;
 
-        auto dataIt = _uniformData.find(name);
-
-        if (dataIt == _uniformData.end()) continue;
-
-        GLuint location = dataIt->second.location;
-        const UniformValue& value = dataIt->second.value;
+        GLuint location = LAD.location;
+        const UniformValue& value = LAD.value;
 
         std::visit([location](auto&& arg) {
             using T = std::decay_t<decltype(arg)>;
@@ -99,7 +95,7 @@ void Shader::ApplyUniforms() {
                 glUniformMatrix4fv(location, 1, GL_FALSE, &arg[0][0]);
         }, value);
 
-        dataIt->second.isDirty = false;
+        LAD.isDirty = false;
     }
 }
 

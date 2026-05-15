@@ -77,17 +77,34 @@ public:
 		glDisable(GL_BLEND);
 	}
 
+	void ApplyTestFiches()
+	{
+		glEnable(GL_POINT_SMOOTH);
+		glDisable(GL_POINT_SMOOTH);
+		glDisable(GL_BLEND);
+		glHint(GL_POINT_SMOOTH_HINT, GL_NICEST); // Просим максимальное качество
+		//glEnable(GL_BLEND); // Сглаживание требует прозрачности
+		glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+		glLineWidth(5.0f);
+		glPointSize(20.0f);
+	}
+
 	void Render(Scene& scene, Camera2D& camera)
 	{
 		glm::mat4 camera_matrix = camera.GetViewProjectionMatrix();
+		std::string uniformNameBuffer = "uViewProj";
 		for (auto& [shader, vec] : scene._shaders)
 		{
+			uniformNameBuffer = "uViewProj";
 			shader->Use();
-			shader->SetUniform("uViewProj", camera_matrix);
+			shader->SetUniform(uniformNameBuffer, camera_matrix);
 			for (auto& [obj, mesh] : vec)
 			{
+				uniformNameBuffer = "uPosition";
 				shader->SetUniform("uPosition", obj->t.GetPosition());
+				uniformNameBuffer = "uRotation";
 				shader->SetUniform("uRotation", obj->t.GetRotation());
+				uniformNameBuffer = "uScale";
 				shader->SetUniform("uScale", obj->t.GetScale());
 				shader->ApplyUniforms();
 
@@ -233,8 +250,8 @@ private:
 class PipeLine
 {
 public:
-	PipeLine(GLbitfield clearMask) 
-		: ctx(clearMask) { }
+	PipeLine(GLbitfield clearMask, RenderPass* pass = nullptr)
+		: ctx(clearMask), _pass(pass) { }
 	inline void SetRenderPass(RenderPass* pass) { _pass = pass; }
 	inline void Start() { _pass->Init(ctx); }
 	void ExecuteRender(Scene* scene, Camera2D* camera) { _pass->Execute(ctx, scene, camera); }

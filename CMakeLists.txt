@@ -13,19 +13,26 @@ endif()
 project ("Board")
 
 # Добавьте источник в исполняемый файл этого проекта.
-add_executable (Board "src/Board.cpp")
+add_executable (Board "src/Board.cpp" "src/font/FontController.h")
 
 
 add_subdirectory(libs/glad)
 add_subdirectory(libs/glfw)
 add_subdirectory(libs/glm)
 add_subdirectory(libs/imgui)
+add_subdirectory(libs/freetype)
 add_subdirectory(src/render)
 add_subdirectory(src/object)
 add_subdirectory(src/helpers)
 
 
-target_link_libraries(Board PRIVATE glfw glm glad imgui module_render)
+target_link_libraries(Board PRIVATE 
+					glfw 
+					glm 
+					glad 
+					imgui
+					freetype
+					module_render)
 
 target_include_directories(imgui PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/src)
 target_include_directories(module_render PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
