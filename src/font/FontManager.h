@@ -24,21 +24,13 @@ struct FontData
     GLuint atlasID;
 };
 
-class FontController
+class FontManager
 {
 public:
-    FontController()
-	{
-		FT_Init_FreeType(&_ft);
-        
-	}
-	~FontController()
-	{
-		//FT_Done_Face(все faces);
-		FT_Done_FreeType(_ft);
-	}
+    static void Init() { FT_Init_FreeType(&_ft); }
+    static void Shutdown() { FT_Done_FreeType(_ft); }
 
-	unsigned int AddFont(const char* path, FT_UInt size = 48, uint32_t startIdx = 32, uint32_t endIdx = 128)
+	static unsigned int AddFont(const char* path, FT_UInt size = 48, uint32_t startIdx = 32, uint32_t endIdx = 128, unsigned char offset = 3)
 	{
         FT_Face face; // данные спаршенного файла
         if (FT_New_Face(_ft, path, 0, &face)) { std::cerr << "font load fail\n"; exit(1); }
@@ -54,7 +46,7 @@ public:
             if (FT_Load_Char(face, c, FT_LOAD_RENDER)) continue;
             if (atlasMaxHeight < face->glyph->bitmap.rows)
                 atlasMaxHeight = face->glyph->bitmap.rows;
-            atlasWidth += face->glyph->bitmap.width;
+            atlasWidth += face->glyph->bitmap.width + offset;
         }
         FData.atlasID = TextureManager::AddAtlas(GL_RED, atlasMaxHeight, atlasWidth);
 
@@ -70,7 +62,7 @@ public:
                 }
             }
 
-            UV uv = TextureManager::AddTextureToAtlas(FData.atlasID, bmp.rows, bmp.width, pixels.data());
+            UV uv = TextureManager::AddTextureToAtlas(FData.atlasID, bmp.rows, bmp.width, pixels.data(), offset);
 
             FData.glyphs[c-startIdx] = {
                 uv,
@@ -85,13 +77,18 @@ public:
         return _lastFreeIndex++;
 	}
 
-    void UseFont(unsigned int fontID, int slot)
+    static void UseFont(unsigned int fontID, int slot)
     {
         TextureManager::BindTexture(_fonts[fontID].atlasID, slot);
     }
 
+    inline static FontData* GetFontData(unsigned int fontID) // добавить const в возвращаемом типе
+    {
+        return &_fonts[fontID];
+    }
+
 private:
-    unsigned int _lastFreeIndex = 1;
-    std::unordered_map<unsigned int, FontData> _fonts; // можно на вектор поменять
-	FT_Library _ft;
+    static inline unsigned int _lastFreeIndex = 1;
+    static inline std::unordered_map<unsigned int, FontData> _fonts; // можно на вектор поменять
+	static inline FT_Library _ft;
 };

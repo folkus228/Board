@@ -2,21 +2,34 @@
 #include <vector>
 #include "object.h"
 #include "../render/Mesh.h"
-#include "../render/Shader.h"
+#include "../render/Material.h"
 
 class RenderPass;
 class RenderContext;
 
+struct RenderData
+{
+	Object* obj;
+	Mesh* mesh; 
+	Material* material;
+};
+
 class Scene
 {
 public:
-	void AddRenderUnit(Object* obj, Mesh* mesh, Shader* shader)
+	void AddRenderUnit(Object* obj, Mesh* mesh, Material* material)
 	{
-		_shaders[shader].push_back({ obj, mesh });
+		_shaders[material->_shader].push_back({ obj, mesh, material });
 	}
 	void AddObj(Object* obj)
 	{
 		_objects.push_back(obj);
+		if (obj->HasComponent<Mesh>())
+		{
+			Material* mat = obj->GetComponent<Material>();
+			Mesh* mesh = obj->GetComponent<Mesh>();
+			_shaders[mat->_shader].push_back({ obj, mesh, mat });
+		}
 	}
 	void DelObj(Object* obj)
 	{
@@ -26,7 +39,18 @@ public:
 		}
 	}
 
-	std::unordered_map<Shader*, std::vector<std::pair<Object*, Mesh*>>> _shaders;
+	void Start()
+	{
+		for (Object* obj : _objects)
+			obj->Start();
+	}
+	void Update()
+	{
+		for (Object* obj : _objects)
+			obj->Update();
+	}
+
+	std::unordered_map<Shader*, std::vector<RenderData>> _shaders;
 private:
 	std::vector<Object*> _objects;
 	friend RenderPass;

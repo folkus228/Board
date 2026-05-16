@@ -7,18 +7,20 @@
 #include <glm/gtx/rotate_vector.hpp>
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtc/quaternion.hpp>
+#include "Component.h"
 #include "../basetools/EventSystem.h"
 
 constexpr float PI2 = 6.28318530718f;
 
-class Transform2D
+class Transform2D : public Component
 {
 public:
 
-    Transform2D(glm::vec3 position = { 0.0f, 0.0f, 0.0f },
+    Transform2D(Object* obj, 
+        glm::vec3 position = { 0.0f, 0.0f, 0.0f },
         float rotation = 0.0f,
         glm::vec2 scale = { 1.0f, 1.0f })
-        : _localPosition(position), _localRotation(glm::radians(rotation)), _localScale(scale) { }   
+        : Component(obj), _localPosition(position), _localRotation(glm::radians(rotation)), _localScale(scale) { }   
 
     // Локальные данные
     glm::vec3 GetLocalPosition() const { return _localPosition; }

@@ -2,14 +2,13 @@
 
 #include "glad/glad.h"
 #include <vector>
+#include "../object/Component.h"
 
-class Mesh
+class Mesh : public Component
 {
 public:
-
-
-    Mesh(GLenum drawType, int elementCount) 
-        : _drawType(drawType), _elementCount(elementCount)
+    Mesh(Object* obj, GLenum drawType, int elementCount) 
+        : Component(obj), _drawType(drawType), _elementCount(elementCount)
     {
         glGenVertexArrays(1, &_VAO);
         glGenBuffers(1, &_VBO);
@@ -23,16 +22,26 @@ public:
         glDeleteBuffers(1, &_VBO);
     }
 
-    void AddData(const void* data, int byteSize)
+    void AllocateData(const void* data, int byteSize, GLenum usage = GL_STATIC_DRAW)
     {
         glBindBuffer(GL_ARRAY_BUFFER, _VBO);
-        glBufferData(GL_ARRAY_BUFFER, byteSize, data, GL_STATIC_DRAW);
+        glBufferData(GL_ARRAY_BUFFER, byteSize, data, usage);
     }
-
-    void AddIndices(const void* elementsData)
+    void AllocateIndices(const void* elementsData, GLenum usage = GL_STATIC_DRAW)
     {
         glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, _EBO);
-        glBufferData(GL_ELEMENT_ARRAY_BUFFER, _elementCount * sizeof(unsigned int), elementsData, GL_STATIC_DRAW);
+        glBufferData(GL_ELEMENT_ARRAY_BUFFER, _elementCount * sizeof(unsigned int), elementsData, usage);
+    }
+
+    void UpdateData(const void* data, GLsizeiptr byteSize, GLintptr offset)
+    {
+        glBindBuffer(GL_ARRAY_BUFFER, _VBO);
+        glBufferSubData(GL_ARRAY_BUFFER, offset, byteSize, data);
+    }
+    void UpdateIndices(const void* data, GLsizeiptr byteSize, GLintptr offset)
+    {
+        glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, _EBO);
+        glBufferSubData(GL_ELEMENT_ARRAY_BUFFER, offset, byteSize, data);
     }
 
     template<typename... Args>
@@ -52,13 +61,9 @@ public:
 
     inline void Draw()
     {
-        // for check the operation of EBO
-        //GLint currentEBO;
-        //glGetIntegerv(GL_ELEMENT_ARRAY_BUFFER_BINDING, &currentEBO);
-        //std::cout << "Active EBO: " << currentEBO << " (Expected: " << _EBO << ")" << std::endl;
         glDrawElements(_drawType, _elementCount, GL_UNSIGNED_INT, 0);
     }
-
+    inline void SetElentsCount(int elementsCount) { _elementCount = elementsCount; }
 private:
     GLenum _drawType;
     int _elementCount;

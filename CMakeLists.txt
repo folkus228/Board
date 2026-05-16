@@ -13,7 +13,7 @@ endif()
 project ("Board")
 
 # Добавьте источник в исполняемый файл этого проекта.
-add_executable (Board "src/Board.cpp" "src/font/FontController.h")
+add_executable (Board "src/Board.cpp" "src/font/FontManager.h"  "src/object/Component.h" "src/font/FontComponent.h")
 
 
 add_subdirectory(libs/glad)

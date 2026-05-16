@@ -55,8 +55,27 @@ public:
 	{
 		Atlas* atlas = _atlases[atlasID];
 		if (!atlas->SetOnPossible(height, width))
+			return { 0.0f, 0.0f, 0.0f, 0.0f };
+		return atlas->AddImage(height, width, data);
+	}
+	static UV AddTextureToAtlas(unsigned int atlasID, uint16_t height, uint16_t width, const unsigned char* data, float offsetx)
+	{
+		Atlas* atlas = _atlases[atlasID];
+		if (!atlas->SetOnPossible(height, width))
+			return { 0.0f, 0.0f, 0.0f, 0.0f };
+		UV uv = atlas->AddImage(height, width, data);
+		atlas->_cursorX += offsetx;
+		return uv;
+	}
+	static UV AddTextureToAtlas(unsigned int atlasID, uint16_t height, uint16_t width, const unsigned char* data, glm::vec2 offset)
+	{
+		Atlas* atlas = _atlases[atlasID];
+		if (!atlas->SetOnPossible(height, width))
 			return {0.0f, 0.0f, 0.0f, 0.0f};
-		return atlas->AddImage(height, width, data);		
+		UV uv = atlas->AddImage(height, width, data);
+		atlas->_cursorX += offset.x;
+		atlas->_cursorY += offset.y;
+		return uv;
 	}
 
 private:

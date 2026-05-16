@@ -98,15 +98,18 @@ public:
 			uniformNameBuffer = "uViewProj";
 			shader->Use();
 			shader->SetUniform(uniformNameBuffer, camera_matrix);
-			for (auto& [obj, mesh] : vec)
+			for (auto& [obj, mesh, material] : vec)
 			{
+				Transform2D* t = obj->GetT();
 				uniformNameBuffer = "uPosition";
-				shader->SetUniform("uPosition", obj->t.GetPosition());
+				shader->SetUniform("uPosition", t->GetPosition());
 				uniformNameBuffer = "uRotation";
-				shader->SetUniform("uRotation", obj->t.GetRotation());
+				shader->SetUniform("uRotation", t->GetRotation());
 				uniformNameBuffer = "uScale";
-				shader->SetUniform("uScale", obj->t.GetScale());
-				shader->ApplyUniforms();
+				shader->SetUniform("uScale", t->GetScale());
+
+				material->Bind();
+				//shader->ApplyUniforms();
 
 				mesh->Use();
 				mesh->Draw();

@@ -2,18 +2,18 @@
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
 
-#include "../object/object.h"
+#include "../object/Component.h"
 
-class Camera2D : public Object
+class Camera2D : public Component
 {
 public:
-    Camera2D(Transform2D transform, float orthoSize = 10.0f, float nearPlane = -1.0f, float farPlane = 100.0f, float aspectRatio = 16.0f / 9.0f)
-        : Object(transform), _orthoSize(orthoSize), _nearPlane(nearPlane), _farPlane(farPlane), _aspectRatio(aspectRatio)
+    Camera2D(Object* obj, float orthoSize = 10.0f, float nearPlane = -1.0f, float farPlane = 100.0f, float aspectRatio = 16.0f / 9.0f)
+        : Component(obj), _transform(obj->GetT()), _orthoSize(orthoSize), _nearPlane(nearPlane), _farPlane(farPlane), _aspectRatio(aspectRatio)
     {
     }
     glm::mat4 GetViewMatrix() const {
-        glm::vec3 pos = t.GetPosition();
-        float angle = t.GetRotation();
+        glm::vec3 pos = _transform->GetPosition();
+        float angle = _transform->GetRotation();
 
         glm::mat4 view = glm::mat4(1.0f);
         view = glm::rotate(view, -angle, glm::vec3(0, 0, 1));
@@ -48,6 +48,8 @@ public:
     inline void SetFarPlane(float farPlane)             { _farPlane = farPlane; }
 
 private:
+    Transform2D* _transform;
+
     float _orthoSize;
     float _aspectRatio;
     float _nearPlane;
