@@ -31,7 +31,11 @@ public:
 		_textures[_lastFreeIndex] = texture;
 		return _lastFreeIndex++;
 	}
-
+	static void SetTexture(unsigned int texID, uint16_t height, uint16_t width, 
+		const void* pixels, GLint fromat, int offsetx = 0, int offsety = 0)
+	{
+		glTexSubImage2D(GL_TEXTURE_2D, 0, offsetx, offsety, width, height, fromat, GL_UNSIGNED_BYTE, pixels);
+	}
 	static inline GLuint GetTexture(GLuint texID)
 	{
 		return _textures[texID];

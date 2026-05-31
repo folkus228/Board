@@ -14,8 +14,10 @@
 #include "helpers/stb_image.h"
 #include "render/Material.h"
 #include "render/TextureManager.h"
+#include "render/VideoManager.h"
 #include "font/FontManager.h"
 #include "font/FontComponent.h"
+#include "render/ParticleManager.h"
 
 int main() {
     // 1 GLFW & GLAD
@@ -39,23 +41,6 @@ int main() {
     Base3DPass basepass;
     pipeline.SetRenderPass(&basepass);
     pipeline.Start();
-    
-    // 5 Load Textures
-    
-    //stbi_set_flip_vertically_on_load(true);
-    //int width, height, channels;
-    //unsigned char* data = stbi_load("C:/all/proj/VisualStudio/Board/res/textures/texture.png", &width, &height, &channels, 0);
-    //if (!data) {
-    //    std::cout << "Не удалось загрузить текстуру!" << std::endl;
-    //    return false;
-    //}
-    //std::cout << "channels: " << channels << std::endl;
-    //TextureManager::Init();
-    //unsigned int texID = TextureManager::AddAtlas(GL_RGBA); //LoadTexture(height, width, data, GL_RGBA);
-    //TextureManager::AddTextureToAtlas(texID, height, width, data);
-    //TextureManager::BindTexture(texID, 0);
-    //
-    //stbi_image_free(data);
 
     FontManager::Init();
     unsigned int arialID = FontManager::AddFont("C:/all/proj/VisualStudio/Board/res/fonts/arial.ttf", 96);
@@ -126,6 +111,13 @@ int main() {
     fontShader.LoadShaderFromFile(GL_FRAGMENT_SHADER, pathToFontFrag);
     fontShader.CompileProgram();
 
+    Shader particleShader;
+    std::string pathToParticleVert = "C:/all/proj/VisualStudio/Board/res/shaders/particle.vert";
+    std::string pathToParticleFrag = "C:/all/proj/VisualStudio/Board/res/shaders/base.frag";
+    particleShader.LoadShaderFromFile(GL_VERTEX_SHADER, pathToParticleVert);
+    particleShader.LoadShaderFromFile(GL_FRAGMENT_SHADER, pathToParticleFrag);
+    particleShader.CompileProgram();
+
     // 8 Scene and Objects
     Object camera;
     camera.AddComponent<Camera2D>(10.0f);
@@ -133,27 +125,39 @@ int main() {
     Transform2D* Tcube = cube.GetT();
     Object cube2;
     Transform2D* Tcube2 = cube2.GetT();
-    Object cube3;
-    Transform2D* Tcube3 = cube3.GetT();
+    Object video;
+    Transform2D* Tvideo = video.GetT();
     Object text;
     Transform2D* Ttext = text.GetT();
     Object dtext;
     Transform2D* Tdtext = dtext.GetT();
+    Object particle;
+    Transform2D* Tparticle = particle.GetT();
 
     Tcube->SetLocalPX(-1);
     Tcube2->SetParent(Tcube);
     Tcube2->SetLocalPosition({0, 0, -1});
-    Tcube3->SetLocalPosition({ -1.5, -2, 1.0 });
-    Tcube3->SetLocalScale({ 15, 0.5 });
+    Tvideo->SetLocalPosition({ 0, 0, 1.0 });
+    Tvideo->SetLocalScale({ 17.7777777778, -10 });
 
     cube.AddComponent<Material>(&baseShader);
     cube2.AddComponent<Material>(&baseShader);
-    cube3.AddComponent<Material>(&textureShader);
+    Material* Matvideo = video.AddComponent<Material>(&textureShader);
+    Video* Cvideo = video.AddComponent<Video>();
+    Cvideo->LoadVideo("C:\\all\\proj\\VisualStudio\\Board\\res\\videos\\video.mp4");
+    StreamData video_data;
+    Cvideo->GetCodecAndStream(video_data);
+    Cvideo->InitCodecCTX(video_data);
+    AVFrame* frame = nullptr;
+    Cvideo->NextFrame(video_data, frame);
+    unsigned int video_tex_idx = Cvideo->CreateFrameTextureTestFicha(video_data, frame);
     std::string uniColor = "uniColor";
-    text.AddComponent<Material>(&fontShader)->_shader->SetUniform(uniColor, glm::vec4{ 1, 1, 1, 1 });
+    text.AddComponent<Material>(&fontShader)->SetUniformValue(uniColor, glm::vec4{ 1, 1, 1, 1 });
     text.AddComponent<StaticText>(1);
-    dtext.AddComponent<Material>(&fontShader);
+    dtext.AddComponent<Material>(&fontShader)->SetUniformValue(uniColor, glm::vec4{ 0, 0, 1, 1 });
     DynamicText* dtextc = dtext.AddComponent<DynamicText>(GL_DYNAMIC_DRAW, 1);
+    ParticleSystem* ps = particle.AddComponent<ParticleSystem>(10000, 20, glm::vec2{0.f, 3.f}, "C:/all/proj/VisualStudio/Board/res/shaders/particles.comp");
+    Material* Mparticle = particle.AddComponent<Material>(&particleShader);
 
     Mesh* Mcube = cube.AddComponent<Mesh>(GL_TRIANGLES, 6);
     Mcube->Use();
@@ -169,11 +173,11 @@ int main() {
     Mcube2->Compile(0, 2, GL_FLOAT, GL_FALSE, sizeof(PointData), (void*)0,
         1, 4, GL_UNSIGNED_BYTE, GL_TRUE, sizeof(PointData), (void*)(2 * sizeof(float)));
 
-    Mesh* Mcube3 = cube3.AddComponent<Mesh>(GL_TRIANGLES, 6);
-    Mcube3->Use();
-    Mcube3->AllocateData(cubeTextureData, sizeof(cubeTextureData));
-    Mcube3->AllocateIndices(cubeIndices);
-    Mcube3->Compile(0, 2, GL_FLOAT, GL_FALSE, sizeof(PointTextureData), (void*)0,
+    Mesh* Mvideo = video.AddComponent<Mesh>(GL_TRIANGLES, 6);
+    Mvideo->Use();
+    Mvideo->AllocateData(cubeTextureData, sizeof(cubeTextureData));
+    Mvideo->AllocateIndices(cubeIndices);
+    Mvideo->Compile(0, 2, GL_FLOAT, GL_FALSE, sizeof(PointTextureData), (void*)0,
         2, 2, GL_FLOAT, GL_FALSE, sizeof(PointTextureData), (void*)(2 * sizeof(float)));
 
     Camera2D* cameraC = camera.GetComponent<Camera2D>();
@@ -182,28 +186,40 @@ int main() {
     scene.AddObj(&camera);
     scene.AddObj(&cube);
     scene.AddObj(&cube2);
-    scene.AddObj(&cube3);
+    scene.AddObj(&video);
     scene.AddObj(&text);
     scene.AddObj(&dtext);
+    scene.AddObj(&particle);
     std::string uniform_name = "ourTexture";
+    Matvideo->SetTextureValue(uniform_name, video_tex_idx);
     textureShader.SetUniform<GLuint>(uniform_name, 0);
 
     // 9 Test Fiches
     glm::vec2 pos1{ 0.0, 0.0 };
     glm::vec2 pos2{ 0.0, 0.0 };
-    glm::vec2 pos3{ 0.0, 0.0 };
+    glm::vec2 posv{ 0.0, 0.0 };
     glm::vec2 post{ 0.0, 0.0 };
     glm::vec2 postd{ 0.0, 0.0 };
+    glm::vec2 posp{ 0.0, 0.0 };
     glm::vec2 scale1{ 1.0, 1.0 };
     glm::vec2 scale2{ 1.0, 1.0 };
-    glm::vec2 scale3{ 1.0, 1.0 };
+    glm::vec2 scalev{ 5.0, 10.0 };
     glm::vec2 scalet{ 0.01, 0.01 };
     glm::vec2 scaletd{ 0.01, 0.01 };
+    glm::vec2 scalep{ 1.f, 1.f };
     float rot1 = 0;
     float rot2 = 0;
-    float rot3 = 0;
+    float rotv = 0;
     float rott = 0;
     float rottd = 0;
+    float rotp = 0;
+    float video_timer = 0;
+    double video_time_counter = 0;
+
+    int frame_counter = 0;
+    double start_time = Time::GetTime();
+    double frames = 0;
+    ImVec4 frames_color = {0.f, 0.f, 0.f, 1.f};
 
     text.GetComponent<Transform2D>()->SetLocalScale({ 0.01, 0.01 });
     text.GetComponent<Transform2D>()->SetLocalPX(-8.1);
@@ -211,13 +227,30 @@ int main() {
     char dtexts[256] = "dtext";
     scene.Start();
     while (!glfwWindowShouldClose(window)) {
+        frame_counter += 1;
         glfwPollEvents();
         {
             ImGui_ImplOpenGL3_NewFrame();
             ImGui_ImplGlfw_NewFrame();
             ImGui::NewFrame();
-            // Простенькое окно ImGui
-            ImGui::Begin("Settings");
+            ImGui::Begin("Engine data");
+            frames = frame_counter / (Time::GetTime() - start_time);
+            if (frames > 120) {
+                frames_color.x = 0.0f;
+                frames_color.y = 1.0f;
+            }
+            else if (frames > 60) {
+                frames_color.x = 1.0f;
+                frames_color.y = 1.0f;
+            }
+            else {
+                frames_color.x = 1.0f;
+                frames_color.y = 0.0f;
+            }
+            ImGui::TextColored(frames_color, std::to_string(frames).c_str());
+            ImGui::End();
+
+            ImGui::Begin("Settings");            
             ImGui::Text("Edit dynamic text");
             if (ImGui::InputText("##text_edit", dtexts, 256)) {
                 dtextc->SetText(dtexts);
@@ -237,13 +270,18 @@ int main() {
                 Tcube2->SetLocalRotation(rot2);
             if (ImGui::DragFloat2("##scale2", &scale2.x, 0.1f, -5, 5))
                 Tcube2->SetLocalScale(scale2);
-            ImGui::Text("Cube 3");
-            if (ImGui::DragFloat2("##pos3", &pos3.x, 0.1f, -5, 5))
-                Tcube3->SetLocalPXY(pos3);
-            if (ImGui::SliderFloat("##rot3", &rot3, -360, 360))
-                Tcube3->SetLocalRotation(rot3);
-            if (ImGui::DragFloat2("##scale3", &scale3.x, 0.1f, -15, 15))
-                Tcube3->SetLocalScale(scale3);
+            ImGui::Text("Video");
+            if (ImGui::DragFloat2("##posv", &posv.x, 0.1f, -5, 5))
+                Tvideo->SetLocalPXY(posv);
+            if (ImGui::SliderFloat("##rotv", &rotv, -360, 360))
+                Tvideo->SetLocalRotation(rotv);
+            if (ImGui::DragFloat2("##scalev", &scalev.x, 0.1f, -15, 15))
+                Tvideo->SetLocalScale(scalev);
+            if (ImGui::SliderFloat("##rewind", &video_timer, 0, Cvideo->GetVideoDuration())) {
+                Cvideo->SetFramePtr(video_timer, video_data);
+                video_time_counter = video_timer;
+                Cvideo->NextFrame(video_data, frame);
+            }
             ImGui::Text("Text Setters");
             if (ImGui::Button("arial", { 100, 35 })) {
                 dtextc->SetFont(arialID);
@@ -271,6 +309,16 @@ int main() {
                 Tdtext->SetLocalRotation(rottd);
             if (ImGui::DragFloat2("##scaletd", &scaletd.x, 0.001f, -50, 50))
                 Tdtext->SetLocalScale(scaletd);
+            ImGui::Text("ParticleSystem");
+            if (ImGui::Button("Emit", { 150, 35 })) {
+                ps->Emit();
+            }
+            if (ImGui::DragFloat2("##posp", &posp.x, 0.1f, -50, 50))
+                Tparticle->SetLocalPXY(posp);
+            if (ImGui::SliderFloat("##rotp", &rotp, -360, 360))
+                Tparticle->SetLocalRotation(rotp);
+            if (ImGui::DragFloat2("##scalep", &scalep.x, 0.1f, -50, 50))
+                Tparticle->SetLocalScale(scalep);
             ImGui::End();
             ImGui::Render();
         }
@@ -278,8 +326,18 @@ int main() {
         glfwGetFramebufferSize(window, &w, &h);
         glViewport(0, 0, w, h);
 
+        Time::Update();
+
         scene.Update();
         pipeline.ExecuteRender(&scene, cameraC);
+
+        video_time_counter += Time::GetDeltaTime();
+        if (Cvideo->SmartNextFrame(video_data, frame, video_time_counter))
+            Cvideo->SetFrameTextureTestFicha(video_tex_idx, frame);
+        else {
+            Cvideo->SetFramePtr(0, video_data);
+            video_time_counter = 0;
+        }
 
         ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
         glfwSwapBuffers(window);

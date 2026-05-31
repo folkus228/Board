@@ -5,7 +5,7 @@ class Object;
 class Component
 {
 public:
-	Component(Object* obj)
+	Component(Object* obj) : _obj(obj)
 	{
 	}
 	virtual ~Component() { }

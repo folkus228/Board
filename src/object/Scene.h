@@ -3,6 +3,7 @@
 #include "object.h"
 #include "../render/Mesh.h"
 #include "../render/Material.h"
+#include "../render/ParticleManager.h"
 
 class RenderPass;
 class RenderContext;
@@ -13,6 +14,13 @@ struct RenderData
 	Mesh* mesh; 
 	Material* material;
 };
+
+struct ParticleData
+{
+	ParticleSystem* ps;
+	Material* material;
+};
+
 
 class Scene
 {
@@ -29,6 +37,12 @@ public:
 			Material* mat = obj->GetComponent<Material>();
 			Mesh* mesh = obj->GetComponent<Mesh>();
 			_shaders[mat->_shader].push_back({ obj, mesh, mat });
+		}
+		if (obj->HasComponent<ParticleSystem>())
+		{
+			ParticleSystem* ps = obj->GetComponent<ParticleSystem>();
+			Material* mat = obj->GetComponent<Material>();
+			_particles[mat->_shader].push_back({ ps, mat });
 		}
 	}
 	void DelObj(Object* obj)
@@ -51,6 +65,7 @@ public:
 	}
 
 	std::unordered_map<Shader*, std::vector<RenderData>> _shaders;
+	std::unordered_map<Shader*, std::vector<ParticleData>> _particles;
 private:
 	std::vector<Object*> _objects;
 	friend RenderPass;

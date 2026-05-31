@@ -9,8 +9,6 @@ protected:
 
 	void Init(RenderContext& ctx) override
 	{
-		//ctx.ApplyTestFiches();
-		//ctx.Enable3DFilter();
 		ctx.EnableBlend();
 	}
 public:

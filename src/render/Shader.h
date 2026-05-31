@@ -87,7 +87,7 @@ template<typename T>
 void Shader::SetUniform(const std::string& name, const T& value) {
 
 #ifdef _DEBUG
-    auto typeIt = _uniformData.find(name);
+    /*auto typeIt = _uniformData.find(name);
     if (typeIt == _uniformData.end()) return;
 
     UniformType expectedType = typeIt->second.type;
@@ -119,6 +119,46 @@ void Shader::SetUniform(const std::string& name, const T& value) {
     else if constexpr (std::is_same_v<T, GLuint>) {
         if (expectedType != UniformType::SAMPLER2D &&
             expectedType != UniformType::SAMPLERCUBE) return;
+    }
+    else
+    {
+        std::cout << "\033[90m" << "parameter \"" << typeIt->first << "\" passes an " 
+            << "\033[91m" << "unsupported" << "\033[90m" 
+            << " type" << "\033[0m" << std::endl;
+        return;
+    }*/
+    auto typeIt = _uniformData.find(name);
+    if (typeIt == _uniformData.end()) return;
+
+    UniformType expectedType = typeIt->second.type;
+
+    if (expectedType != UniformType::FLOAT) {
+        if (std::is_same_v<T, float>) return;
+    }
+    else if (expectedType != UniformType::INT) {
+        if (std::is_same_v<T, int>) return;
+    }
+    else if (expectedType != UniformType::BOOL) {
+        if (std::is_same_v<T, bool>) return;
+    }
+    else if (expectedType != UniformType::VEC2) {
+        if (std::is_same_v<T, glm::vec2>) return;
+    }
+    else if (expectedType != UniformType::VEC3) {
+        if (std::is_same_v<T, glm::vec3>) return;
+    }
+    else if (expectedType != UniformType::VEC4) {
+        if (std::is_same_v<T, glm::vec4>) return;
+    }
+    else if (expectedType != UniformType::MAT3) {
+        if (std::is_same_v<T, glm::mat3>) return;
+    }
+    else if (expectedType != UniformType::MAT4) {
+        if (std::is_same_v<T, glm::mat4>) return;
+    }
+    else if (expectedType != UniformType::SAMPLER2D &&
+        expectedType != UniformType::SAMPLERCUBE) {
+        if (std::is_same_v<T, GLuint>) return;
     }
     else
     {

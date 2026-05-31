@@ -7,6 +7,7 @@
 #include "Camera2D.h"
 #include "Mesh.h"
 #include "Shader.h"
+#include "ParticleManager.h"
 
 #include <vector>
 #include <unordered_map>
@@ -109,10 +110,29 @@ public:
 				shader->SetUniform("uScale", t->GetScale());
 
 				material->Bind();
-				//shader->ApplyUniforms();
 
 				mesh->Use();
 				mesh->Draw();
+			}
+		}
+		for (auto& [shader, pd] : scene._particles)
+		{
+			uniformNameBuffer = "uViewProj";
+			shader->Use();
+			shader->SetUniform(uniformNameBuffer, camera_matrix);
+			for (auto& [ps, material] : pd)
+			{
+				Object* obj_test = ps->GetObject();
+				Transform2D* t = obj_test->GetT();
+				uniformNameBuffer = "uPosition";
+				shader->SetUniform("uPosition", t->GetPosition());
+				uniformNameBuffer = "uRotation";
+				shader->SetUniform("uRotation", t->GetRotation());
+				uniformNameBuffer = "uScale";
+				shader->SetUniform("uScale", t->GetScale());
+
+				material->Bind();
+				ps->Draw();
 			}
 		}
 	}
