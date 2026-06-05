@@ -2,6 +2,7 @@
 #include <chrono>
 #include <queue>
 #include <unordered_map>
+#include <algorithm>
 
 extern "C" {
 #include "libavformat/avformat.h"
@@ -21,26 +22,35 @@ void PrintInfoFFMpeg() {
 
 struct StreamData
 {
+    StreamData() 
+        : _thisFrame(av_frame_alloc()), 
+        _nextFrame(av_frame_alloc()) {}
     AVCodecContext* c_ctx;
     AVStream* stream;
     const AVCodec* codec;
+    AVFrame* _thisFrame;
+    AVFrame* _nextFrame;
     int stream_index;
 };
 
 class Video : public Component
 {
 public:
-    Video(Object* obj) 
+    Video(Object* obj)
         : Component(obj) {
         _packet = av_packet_alloc();
-        _frame = av_frame_alloc();
     }
     ~Video()
     {
         av_packet_free(&_packet);
-        av_frame_free(&_frame);
+        for (auto& sd : _streams) {
+            av_frame_free(&sd._thisFrame);
+            av_frame_free(&sd._nextFrame);
+        }
     }
-    void LoadVideo(const char* path) {
+    
+    void LoadVideo(const char* path, size_t streamsCount = 1) {
+
         if (avformat_open_input(&_f_ctx, path, nullptr, nullptr) < 0) {
             std::cerr << "Не удалось открыть файл: " << path << std::endl;
             return;
@@ -51,55 +61,38 @@ public:
             avformat_close_input(&_f_ctx);
             return;
         }
+        _streams.resize(streamsCount);
     }
-    void GetCodecAndStream(StreamData& sd, AVMediaType type = AVMEDIA_TYPE_VIDEO)
+    // First stream only AVMEDIA_TYPE_VIDEO
+    template<typename... AVMT>
+    inline void InitStreams(AVMT... types)
     {
-        // Функция сама найдет лучший видеопоток и вернет нужный для него декодер (кодек)
-        sd.stream_index = av_find_best_stream(_f_ctx, type, -1, -1, &sd.codec, 0);
-        if (sd.stream_index < 0) {
-            std::cerr << "В этом MP4 нет видеопотока!" << std::endl;
-        }
+        _InitStreams(0, types...);
     }
-    void InitCodecCTX(StreamData& sd)
+    void SetFramePtr(double time)
     {
-        sd.stream = _f_ctx->streams[sd.stream_index];
-        sd.c_ctx = avcodec_alloc_context3(sd.codec);
-        if (!sd.c_ctx) {
-            std::cerr << "Не удалось выделить память под контекст декодера" << std::endl;
-            return;
+        this->time = time;
+        for (auto& sd : _streams) {
+            int64_t target_pts = time / av_q2d(sd.stream->time_base);
+            av_seek_frame(_f_ctx, sd.stream_index, target_pts, AVSEEK_FLAG_BACKWARD);
+            avcodec_flush_buffers(sd.c_ctx);
         }
-        // Копируем параметры параметров из файла в наш декодер (разрешение, профиль и т.д.)
-        avcodec_parameters_to_context(sd.c_ctx, sd.stream->codecpar);
-
-        if (avcodec_open2(sd.c_ctx, sd.codec, nullptr) < 0) {
-            std::cerr << "Failed to open codec" << std::endl;
-            return;
+        for (auto& [idx, q] : _packet_queues) {
+            while (!q.empty()) { av_packet_free(&q.front()); q.pop(); }
         }
+        // переинициализируем буферы кадров
+        for (auto& sd : _streams) {
+            NextFrame(sd);
+            NextFrame(sd);
+        }
+        SetFrameTextureTestFicha(_streams[0]._thisFrame);
     }
-    template<typename... SD>
-    void SetFramePtr(double time, StreamData& sd, SD... sds)
-    {
-        int64_t target_pts = time / av_q2d(sd.stream->time_base);
-        int seek_result = av_seek_frame(_f_ctx, sd.stream_index, target_pts, AVSEEK_FLAG_BACKWARD);
-        avcodec_flush_buffers(sd.c_ctx);
-        if (seek_result < 0) std::cerr << "Ошибка при поиске позиции (Seek error)\n";
-        if constexpr (sizeof...(SD) > 0)
-            SetFramePtr(time, sds...);
-        else {
-            for (auto& [idx, q] : _packet_queues) {
-                while (!q.empty()) {
-                    av_packet_free(&q.front());
-                    q.pop();
-                }
-            }
-        }
-    }
-    double GetVideoDuration() { return _f_ctx->duration / (double)AV_TIME_BASE; }
-    bool NextFrame(StreamData& sd, AVFrame*& out_frame) {
+    bool NextFrame(StreamData& sd) {
+        std::swap(sd._thisFrame, sd._nextFrame); // меняем местами
         while (true) {
             // 1. Проверяем декодер. Если там есть кадр — отдаем его (работает и для обычного режима, и для flush)
-            int ret = avcodec_receive_frame(sd.c_ctx, _frame);                           // читаем кадр
-            if (ret == 0) { out_frame = _frame; return true; }                           // если кадр полностью собран
+            int ret = avcodec_receive_frame(sd.c_ctx, sd._nextFrame);                           // читаем кадр
+            if (ret == 0) { return true; }                           // если кадр полностью собран
             if (ret == AVERROR_EOF || (ret < 0 && ret != AVERROR(EAGAIN))) return false; // если ошибка не свяана с запросом доп батча
 
             auto& q = _packet_queues[sd.stream_index]; // получили очередь
@@ -133,65 +126,97 @@ public:
             if (!read_any_packet) avcodec_send_packet(sd.c_ctx, nullptr); // Передаем nullptr. Кодек понимает, что это финал, и подготавливает застрявшие кадры    
         }
     }
-    bool SmartNextFrame(StreamData& sd, AVFrame*& out_frame, double time)
+    inline void Start() override
     {
-        if (out_frame == nullptr)
-            return NextFrame(sd, out_frame);
-        else {
-            double seconds = out_frame->pts * av_q2d(sd.stream->time_base);
-            if (time > seconds)
-                return NextFrame(sd, out_frame);
-            else
-                return true;
+        for (auto& sd : _streams) {
+            NextFrame(sd);
+            NextFrame(sd);
         }
-    }
-    void ReWriteNextAllFrameTestFicha(StreamData& sd, AVFrame*& out_frame, double time_sec)
-    {
-        double tick_rate = av_q2d(sd.stream->time_base);
-        double sec = _frame->pts * tick_rate;
-        while (time_sec > sec) {
-            NextFrame(sd, out_frame);
-            sec = _frame->pts * tick_rate;
-        }
-    }
-    unsigned int CreateFrameTextureTestFicha(StreamData& sd, AVFrame*& frame)
-    {
-        // Видео: YUV420P → RGB через sws_scale
-        SwsContext* sws_ctx = sws_getContext(
+
+        AVFrame* frame = _streams[0]._thisFrame;
+        _sws_ctx = sws_getContext(
             frame->width, frame->height, (AVPixelFormat)frame->format,
             frame->width, frame->height, AV_PIX_FMT_RGB24,
             SWS_BILINEAR, nullptr, nullptr, nullptr
         );
 
-        std::vector<uint8_t> rgb_buffer(frame->width * frame->height * 3);
+        texID = CreateFrameTextureTestFicha(_streams[0]);
+        std::string ourTexture = "ourTexture";
+        GetObject()->GetComponent<Material>()->SetTextureValue(ourTexture, texID);
+    }
+    void Update() override
+    {
+        if (isPausa)
+            return;
+        if (time > GetVideoDuration())
+            return;
+        time += Time::GetDeltaTime();
+        for (auto& sd : _streams) {
+            double nextTime = sd._nextFrame->pts * av_q2d(sd.stream->time_base);
+            while (nextTime < time)
+            {
+                NextFrame(sd);
+                nextTime = sd._nextFrame->pts * av_q2d(sd.stream->time_base);
+            }
+        }
+        // processing current frame
+        SetFrameTextureTestFicha(_streams[0]._thisFrame);
+    }
+    unsigned int CreateFrameTextureTestFicha(StreamData& sd)
+    {
+        std::vector<uint8_t> rgb_buffer(sd._thisFrame->width * sd._thisFrame->height * 3);
         uint8_t* dst[1] = { rgb_buffer.data() };
-        int dst_stride[1] = { frame->width * 3 };
-        sws_scale(sws_ctx, frame->data, frame->linesize, 0, frame->height, dst, dst_stride);
+        int dst_stride[1] = { sd._thisFrame->width * 3 };
+        sws_scale(_sws_ctx, sd._thisFrame->data, sd._thisFrame->linesize, 0, sd._thisFrame->height, dst, dst_stride);
         // rgb_buffer — готовый RGB, можно грузить в текстуру
-        return TextureManager::LoadTexture(frame->height, frame->width, rgb_buffer.data(), GL_RGB);
+        return TextureManager::LoadTexture(sd._thisFrame->height, sd._thisFrame->width, rgb_buffer.data(), GL_RGB);
     }
-    void SetFrameTextureTestFicha(unsigned int texID, AVFrame*& frame)
+    void SetFrameTextureTestFicha(AVFrame*& frame)
     {
-        // Видео: YUV420P → RGB через sws_scale
-        SwsContext* sws_ctx = sws_getContext(
-            frame->width, frame->height, (AVPixelFormat)frame->format,
-            frame->width, frame->height, AV_PIX_FMT_RGB24,
-            SWS_BILINEAR, nullptr, nullptr, nullptr
-        );
-
         std::vector<uint8_t> rgb_buffer(frame->width * frame->height * 3);
         uint8_t* dst[1] = { rgb_buffer.data() };
         int dst_stride[1] = { frame->width * 3 };
-        sws_scale(sws_ctx, frame->data, frame->linesize, 0, frame->height, dst, dst_stride);
+        sws_scale(_sws_ctx, frame->data, frame->linesize, 0, frame->height, dst, dst_stride);
         // rgb_buffer — готовый RGB, можно грузить в текстуру
         TextureManager::BindTexture(texID, 0);
         TextureManager::SetTexture(texID, frame->height, frame->width,
             rgb_buffer.data(), GL_RGB);
     }
+    double GetVideoDuration() { return _f_ctx->duration / (double)AV_TIME_BASE; }
+    void Pausa() { isPausa = !isPausa; }
+    void Pausa(bool pausa) { isPausa = pausa; }
+    bool IsPausa() { return isPausa; }
 private:
+    template<typename... AVMT>
+    void _InitStreams(int idx, AVMediaType type, AVMT... types)
+    {
+        _streams[idx].stream_index = av_find_best_stream(_f_ctx, type, -1, -1, &_streams[idx].codec, 0);
+        if (_streams[idx].stream_index < 0) {
+            std::cerr << "This file not have a stream!" << std::endl;
+        }
+        _streams[idx].stream = _f_ctx->streams[_streams[idx].stream_index];
+        _streams[idx].c_ctx = avcodec_alloc_context3(_streams[idx].codec);
+        if (!_streams[idx].c_ctx) {
+            std::cerr << "Faile to allocate memora for decoder" << std::endl;
+            return;
+        }
+        // Копируем параметры параметров из файла в наш декодер (разрешение, профиль и т.д.)
+        avcodec_parameters_to_context(_streams[idx].c_ctx, _streams[idx].stream->codecpar);
+
+        if (avcodec_open2(_streams[idx].c_ctx, _streams[idx].codec, nullptr) < 0) {
+            std::cerr << "Failed to open codec" << std::endl;
+            return;
+        }
+        if constexpr (sizeof...(AVMT) > 0)
+            _InitStreams(idx + 1, types...);
+    }
+
     std::unordered_map<int, std::queue<AVPacket*>> _packet_queues;
+    std::vector<StreamData> _streams;
     AVFormatContext* _f_ctx = nullptr;
-    AVCodecContext* _c_ctx;
     AVPacket* _packet;
-    AVFrame* _frame;
+    SwsContext* _sws_ctx;
+    double time = 0;
+    unsigned int texID;
+    bool isPausa = false;
 };

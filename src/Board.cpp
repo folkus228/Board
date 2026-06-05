@@ -7,7 +7,7 @@
 #include <imgui_impl_glfw.h>
 #include <imgui_impl_opengl3.h>
 #include <glm/glm.hpp>
-#include <iostream>
+#include "render/WindowsManager.h"
 #include "render/PipeLine.h"
 #include "render/Base3DPass.h"
 #define STB_IMAGE_IMPLEMENTATION // макрос для включения функций stb_image
@@ -19,14 +19,177 @@
 #include "font/FontComponent.h"
 #include "render/ParticleManager.h"
 
+class DataStorage
+{
+public:
+    inline static int AddData(void* data)
+    {
+        _data[_lastID] = data;
+        return _lastID++;
+    }
+    inline static void* GetData(int id)
+    {
+        return _data[id];
+    }
+private:
+    static inline std::unordered_map<int, void*> _data;
+    static inline int _lastID = 1;
+};
+
+struct ImGuiData
+{
+    Transform2D* Tcube;
+    Transform2D* Tcube2;
+    Transform2D* Tvideo;
+    unsigned arialID;
+    unsigned pixelID;
+    unsigned beerID;
+    Transform2D* Ttext;
+    Transform2D* Tdtext;
+    Transform2D* Tparticle;
+    DynamicText* dtextc;
+    Video* Cevideo;
+    ParticleSystem* ps;
+};
+
+void ImGuiDraw()
+{
+    static ImGuiData* igd = (ImGuiData*)DataStorage::GetData(1);
+    static glm::vec2 pos1{ 0.0, 0.0 };
+    static glm::vec2 pos2{ 0.0, 0.0 };
+    static glm::vec2 posv{ 0.0, 0.0 };
+    static glm::vec2 post{ 0.0, 0.0 };
+    static glm::vec2 postd{ 0.0, 0.0 };
+    static glm::vec2 posp{ 0.0, 0.0 };
+    static glm::vec2 scale1{ 1.0, 1.0 };
+    static glm::vec2 scale2{ 1.0, 1.0 };
+    static glm::vec2 scalev{ 5.0, 10.0 };
+    static glm::vec2 scalet{ 0.01, 0.01 };
+    static glm::vec2 scaletd{ 0.01, 0.01 };
+    static glm::vec2 scalep{ 1.f, 1.f };
+    static float rot1 = 0;
+    static float rot2 = 0;
+    static float rotv = 0;
+    static float rott = 0;
+    static float rottd = 0;
+    static float rotp = 0;
+    static char dtexts[256] = "dtext";
+
+    static float video_timer = 0;
+    static int frame_counter = 0;
+    static double last_time = Time::GetTime();
+    static int frames = 0;
+    static ImVec4 frames_color = { 0.f, 0.f, 0.f, 1.f };
+
+    ImGui_ImplOpenGL3_NewFrame();
+    ImGui_ImplGlfw_NewFrame();
+    ImGui::NewFrame();
+    ImGui::Begin("Engine data");
+
+    frame_counter += 1;
+    if (Time::GetTime() - last_time >= 1)
+    {
+        frames = frame_counter;
+        frame_counter = 0;
+        last_time = Time::GetTime();
+    }
+    if (frames > 120) {
+        frames_color.x = 0.0f;
+        frames_color.y = 1.0f;
+    }
+    else if (frames > 60) {
+        frames_color.x = 1.0f;
+        frames_color.y = 1.0f;
+    }
+    else {
+        frames_color.x = 1.0f;
+        frames_color.y = 0.0f;
+    }
+    ImGui::TextColored(frames_color, std::to_string(frames).c_str());
+    ImGui::End();
+
+    ImGui::Begin("Settings");
+    ImGui::Text("Edit dynamic text");
+    if (ImGui::InputText("##text_edit", dtexts, 256)) {
+        igd->dtextc->SetText(dtexts);
+        igd->dtextc->Recalculate();
+    }
+    ImGui::Text("Cube 1");
+    if (ImGui::DragFloat2("##pos1", &pos1.x, 0.1f, -5, 5))
+        igd->Tcube->SetLocalPXY(pos1);
+    if (ImGui::SliderFloat("##rot1", &rot1, -360, 360))
+        igd->Tcube->SetLocalRotation(rot1);
+    if (ImGui::DragFloat2("##scale1", &scale1.x, 0.1f, -5, 5))
+        igd->Tcube->SetLocalScale(scale1);
+    ImGui::Text("Cube 2");
+    if (ImGui::DragFloat2("##pos2", &pos2.x, 0.1f, -5, 5))
+        igd->Tcube2->SetLocalPXY(pos2);
+    if (ImGui::SliderFloat("##rot2", &rot2, -360, 360))
+        igd->Tcube2->SetLocalRotation(rot2);
+    if (ImGui::DragFloat2("##scale2", &scale2.x, 0.1f, -5, 5))
+        igd->Tcube2->SetLocalScale(scale2);
+    ImGui::Text("Video");
+    if (ImGui::DragFloat2("##posv", &posv.x, 0.1f, -5, 5))
+        igd->Tvideo->SetLocalPXY(posv);
+    if (ImGui::SliderFloat("##rotv", &rotv, -360, 360))
+        igd->Tvideo->SetLocalRotation(rotv);
+    if (ImGui::DragFloat2("##scalev", &scalev.x, 0.1f, -15, 15))
+        igd->Tvideo->SetLocalScale(scalev);
+    if (ImGui::SliderFloat("##rewind", &video_timer, 0, igd->Cevideo->GetVideoDuration()))
+        igd->Cevideo->SetFramePtr(video_timer);
+    if (ImGui::Button("pausa", { 100, 35 }))
+        igd->Cevideo->Pausa();
+    ImGui::Text("Text Setters");
+    if (ImGui::Button("arial", { 100, 35 })) {
+        igd->dtextc->SetFont(igd->arialID);
+        igd->dtextc->Recalculate();
+    }
+    if (ImGui::Button("pixel", { 100, 35 })) {
+        igd->dtextc->SetFont(igd->pixelID);
+        igd->dtextc->Recalculate();
+    }
+    if (ImGui::Button("beer", { 100, 35 })) {
+        igd->dtextc->SetFont(igd->beerID);
+        igd->dtextc->Recalculate();
+    }
+    ImGui::Text("Text");
+    if (ImGui::DragFloat2("##post", &post.x, 0.1f, -50, 50))
+        igd->Ttext->SetLocalPXY(post);
+    if (ImGui::SliderFloat("##rott", &rott, -360, 360))
+        igd->Ttext->SetLocalRotation(rott);
+    if (ImGui::DragFloat2("##scalet", &scalet.x, 0.001f, -15, 15))
+        igd->Ttext->SetLocalScale(scalet);
+    ImGui::Text("Dynamic Text");
+    if (ImGui::DragFloat2("##postd", &postd.x, 0.1f, -50, 50))
+        igd->Tdtext->SetLocalPXY(postd);
+    if (ImGui::SliderFloat("##rottd", &rottd, -360, 360))
+        igd->Tdtext->SetLocalRotation(rottd);
+    if (ImGui::DragFloat2("##scaletd", &scaletd.x, 0.001f, -50, 50))
+        igd->Tdtext->SetLocalScale(scaletd);
+    ImGui::Text("ParticleSystem");
+    if (ImGui::Button("Emit", { 150, 35 })) {
+        igd->ps->Emit();
+    }
+    if (ImGui::DragFloat2("##posp", &posp.x, 0.1f, -50, 50))
+        igd->Tparticle->SetLocalPXY(posp);
+    if (ImGui::SliderFloat("##rotp", &rotp, -360, 360))
+        igd->Tparticle->SetLocalRotation(rotp);
+    if (ImGui::DragFloat2("##scalep", &scalep.x, 0.1f, -50, 50))
+        igd->Tparticle->SetLocalScale(scalep);
+    ImGui::End();
+    ImGui::Render();
+}
+void ImGuiEndRender() {
+    ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
+}
+
 int main() {
     // 1 GLFW & GLAD
-    if (!glfwInit()) return -1;
-    GLFWwindow* window = glfwCreateWindow(800*1.5, 450*1.5, "ImGui+GLM+GLAD+GLFW Test", NULL, NULL);
-    if (!window) { glfwTerminate(); return -1; }
-    glfwMakeContextCurrent(window);
-    if (!gladLoadGLLoader((GLADloadproc)glfwGetProcAddress)) return -1;
-
+    PipeLine pipeline(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+    GLFWwindow* window = nullptr;
+    WindowsManager wm(window, 1200, 675, "Board");
+    //GLFWwindow* window2 = nullptr;
+    //wm.AddWindow(window2, 800, 600, "window2", window);
     // 2 ImGui Context
     IMGUI_CHECKVERSION();
     ImGui::CreateContext();
@@ -37,7 +200,6 @@ int main() {
     glm::vec3 clear_color = glm::vec3(0.45f, 0.55f, 0.60f);
 
     // 4 PipeLine
-    PipeLine pipeline(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
     Base3DPass basepass;
     pipeline.SetRenderPass(&basepass);
     pipeline.Start();
@@ -80,10 +242,6 @@ int main() {
     };
     // cube with texture
     PointTextureData cubeTextureData[] = {
-        //{-0.5f, -0.5f, catTex.uv.u0, catTex.uv.v0 },    // Нижний левый - 0
-        //{ 0.5f, -0.5f, catTex.uv.u1, catTex.uv.v0 },    // Нижний правый - 1
-        //{ 0.5f,  0.5f, catTex.uv.u1, catTex.uv.v1 },    // Верхний правый - 2
-        //{-0.5f,  0.5f, catTex.uv.u0, catTex.uv.v1 }     // Верхний левый - 3
         {-0.5f, -0.5f, 0.0f, 0.0f },    // Нижний левый - 0
         { 0.5f, -0.5f, 1.0f, 0.0f },    // Нижний правый - 1
         { 0.5f,  0.5f, 1.0f, 1.0f },    // Верхний правый - 2
@@ -120,7 +278,9 @@ int main() {
 
     // 8 Scene and Objects
     Object camera;
-    camera.AddComponent<Camera2D>(10.0f);
+    Camera2D* ccamera = camera.AddComponent<Camera2D>(10.0f);
+    Object camera2;
+    Camera2D* ccamera2 = camera2.AddComponent<Camera2D>(10.0f);
     Object cube;
     Transform2D* Tcube = cube.GetT();
     Object cube2;
@@ -143,14 +303,9 @@ int main() {
     cube.AddComponent<Material>(&baseShader);
     cube2.AddComponent<Material>(&baseShader);
     Material* Matvideo = video.AddComponent<Material>(&textureShader);
-    Video* Cvideo = video.AddComponent<Video>();
-    Cvideo->LoadVideo("C:\\all\\proj\\VisualStudio\\Board\\res\\videos\\video.mp4");
-    StreamData video_data;
-    Cvideo->GetCodecAndStream(video_data);
-    Cvideo->InitCodecCTX(video_data);
-    AVFrame* frame = nullptr;
-    Cvideo->NextFrame(video_data, frame);
-    unsigned int video_tex_idx = Cvideo->CreateFrameTextureTestFicha(video_data, frame);
+    Video* Cevideo = video.AddComponent<Video>();
+    Cevideo->LoadVideo("C:\\all\\proj\\VisualStudio\\Board\\res\\videos\\video.mp4"); // 3840x2160nature
+    Cevideo->InitStreams(AVMEDIA_TYPE_VIDEO);
     std::string uniColor = "uniColor";
     text.AddComponent<Material>(&fontShader)->SetUniformValue(uniColor, glm::vec4{ 1, 1, 1, 1 });
     text.AddComponent<StaticText>(1);
@@ -184,6 +339,7 @@ int main() {
 
     Scene scene;
     scene.AddObj(&camera);
+    scene.AddObj(&camera2);
     scene.AddObj(&cube);
     scene.AddObj(&cube2);
     scene.AddObj(&video);
@@ -191,7 +347,6 @@ int main() {
     scene.AddObj(&dtext);
     scene.AddObj(&particle);
     std::string uniform_name = "ourTexture";
-    Matvideo->SetTextureValue(uniform_name, video_tex_idx);
     textureShader.SetUniform<GLuint>(uniform_name, 0);
 
     // 9 Test Fiches
@@ -214,114 +369,45 @@ int main() {
     float rottd = 0;
     float rotp = 0;
     float video_timer = 0;
-    double video_time_counter = 0;
 
     int frame_counter = 0;
-    double start_time = Time::GetTime();
-    double frames = 0;
+    double last_time = Time::GetTime();
+    int frames = 0;
     ImVec4 frames_color = {0.f, 0.f, 0.f, 1.f};
+
+
+    ImGuiData igd;
+    DataStorage::AddData(&igd);
+    //igd.video_data = &video_data;
+    igd.Tcube = Tcube;
+    igd.Tcube2 = Tcube2;
+    igd.Tvideo = Tvideo;
+    igd.arialID = arialID;
+    igd.pixelID = pixelID;
+    igd.beerID = beerID;
+    igd.Ttext = Ttext;
+    igd.Tdtext = Tdtext;
+    igd.Tparticle = Tparticle;
+    igd.dtextc = dtextc;
+    igd.Cevideo = Cevideo;
+    igd.ps = ps;
+
 
     text.GetComponent<Transform2D>()->SetLocalScale({ 0.01, 0.01 });
     text.GetComponent<Transform2D>()->SetLocalPX(-8.1);
     dtext.GetComponent<Transform2D>()->SetLocalScale({ 0.01, 0.01 });
     char dtexts[256] = "dtext";
     scene.Start();
+    wm.AddRenderData(window, &pipeline, &scene, ccamera);
+    //wm.AddRenderData(window2, &pipeline, &scene, ccamera);
+    wm.AddUpdateFunc(ImGuiDraw);
+    wm.AddUpdateFunc(Time::Update);
+    wm.AddUpdateFunc(ImGuiEndRender);
+    //wm.Run();
     while (!glfwWindowShouldClose(window)) {
-        frame_counter += 1;
         glfwPollEvents();
-        {
-            ImGui_ImplOpenGL3_NewFrame();
-            ImGui_ImplGlfw_NewFrame();
-            ImGui::NewFrame();
-            ImGui::Begin("Engine data");
-            frames = frame_counter / (Time::GetTime() - start_time);
-            if (frames > 120) {
-                frames_color.x = 0.0f;
-                frames_color.y = 1.0f;
-            }
-            else if (frames > 60) {
-                frames_color.x = 1.0f;
-                frames_color.y = 1.0f;
-            }
-            else {
-                frames_color.x = 1.0f;
-                frames_color.y = 0.0f;
-            }
-            ImGui::TextColored(frames_color, std::to_string(frames).c_str());
-            ImGui::End();
-
-            ImGui::Begin("Settings");            
-            ImGui::Text("Edit dynamic text");
-            if (ImGui::InputText("##text_edit", dtexts, 256)) {
-                dtextc->SetText(dtexts);
-                dtextc->Recalculate();
-            }
-            ImGui::Text("Cube 1");
-            if (ImGui::DragFloat2("##pos1", &pos1.x, 0.1f, -5, 5))
-                Tcube->SetLocalPXY(pos1);
-            if (ImGui::SliderFloat("##rot1", &rot1, -360, 360))
-                Tcube->SetLocalRotation(rot1);
-            if (ImGui::DragFloat2("##scale1", &scale1.x, 0.1f, -5, 5))
-                Tcube->SetLocalScale(scale1);
-            ImGui::Text("Cube 2");
-            if (ImGui::DragFloat2("##pos2", &pos2.x, 0.1f, -5, 5))
-                Tcube2->SetLocalPXY(pos2);
-            if (ImGui::SliderFloat("##rot2", &rot2, -360, 360))
-                Tcube2->SetLocalRotation(rot2);
-            if (ImGui::DragFloat2("##scale2", &scale2.x, 0.1f, -5, 5))
-                Tcube2->SetLocalScale(scale2);
-            ImGui::Text("Video");
-            if (ImGui::DragFloat2("##posv", &posv.x, 0.1f, -5, 5))
-                Tvideo->SetLocalPXY(posv);
-            if (ImGui::SliderFloat("##rotv", &rotv, -360, 360))
-                Tvideo->SetLocalRotation(rotv);
-            if (ImGui::DragFloat2("##scalev", &scalev.x, 0.1f, -15, 15))
-                Tvideo->SetLocalScale(scalev);
-            if (ImGui::SliderFloat("##rewind", &video_timer, 0, Cvideo->GetVideoDuration())) {
-                Cvideo->SetFramePtr(video_timer, video_data);
-                video_time_counter = video_timer;
-                Cvideo->NextFrame(video_data, frame);
-            }
-            ImGui::Text("Text Setters");
-            if (ImGui::Button("arial", { 100, 35 })) {
-                dtextc->SetFont(arialID);
-                dtextc->Recalculate();
-            }
-            if (ImGui::Button("pixel", { 100, 35 })) {
-                dtextc->SetFont(pixelID);
-                dtextc->Recalculate();
-            }
-            if (ImGui::Button("beer", { 100, 35 })) {
-                dtextc->SetFont(beerID);
-                dtextc->Recalculate();
-            }
-            ImGui::Text("Text");
-            if (ImGui::DragFloat2("##post", &post.x, 0.1f, -50, 50))
-                Ttext->SetLocalPXY(post);
-            if (ImGui::SliderFloat("##rott", &rott, -360, 360))
-                Ttext->SetLocalRotation(rott);
-            if (ImGui::DragFloat2("##scalet", &scalet.x, 0.001f, -15, 15))
-                Ttext->SetLocalScale(scalet);
-            ImGui::Text("Dynamic Text");
-            if (ImGui::DragFloat2("##postd", &postd.x, 0.1f, -50, 50))
-                Tdtext->SetLocalPXY(postd);
-            if (ImGui::SliderFloat("##rottd", &rottd, -360, 360))
-                Tdtext->SetLocalRotation(rottd);
-            if (ImGui::DragFloat2("##scaletd", &scaletd.x, 0.001f, -50, 50))
-                Tdtext->SetLocalScale(scaletd);
-            ImGui::Text("ParticleSystem");
-            if (ImGui::Button("Emit", { 150, 35 })) {
-                ps->Emit();
-            }
-            if (ImGui::DragFloat2("##posp", &posp.x, 0.1f, -50, 50))
-                Tparticle->SetLocalPXY(posp);
-            if (ImGui::SliderFloat("##rotp", &rotp, -360, 360))
-                Tparticle->SetLocalRotation(rotp);
-            if (ImGui::DragFloat2("##scalep", &scalep.x, 0.1f, -50, 50))
-                Tparticle->SetLocalScale(scalep);
-            ImGui::End();
-            ImGui::Render();
-        }
+        ImGuiDraw();
+        
         int w, h;
         glfwGetFramebufferSize(window, &w, &h);
         glViewport(0, 0, w, h);
@@ -330,14 +416,6 @@ int main() {
 
         scene.Update();
         pipeline.ExecuteRender(&scene, cameraC);
-
-        video_time_counter += Time::GetDeltaTime();
-        if (Cvideo->SmartNextFrame(video_data, frame, video_time_counter))
-            Cvideo->SetFrameTextureTestFicha(video_tex_idx, frame);
-        else {
-            Cvideo->SetFramePtr(0, video_data);
-            video_time_counter = 0;
-        }
 
         ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
         glfwSwapBuffers(window);
@@ -348,6 +426,6 @@ int main() {
     ImGui_ImplOpenGL3_Shutdown();
     ImGui_ImplGlfw_Shutdown();
     ImGui::DestroyContext();
-    glfwTerminate();
+    //glfwTerminate();
     return 0;
 }
