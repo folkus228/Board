@@ -304,7 +304,7 @@ int main() {
     cube2.AddComponent<Material>(&baseShader);
     Material* Matvideo = video.AddComponent<Material>(&textureShader);
     Video* Cevideo = video.AddComponent<Video>();
-    Cevideo->LoadVideo("C:\\all\\proj\\VisualStudio\\Board\\res\\videos\\video.mp4"); // 3840x2160nature
+    Cevideo->LoadVideo("C:\\all\\proj\\VisualStudio\\Board\\res\\videos\\3840x2160nature.mp4"); // 3840x2160nature
     Cevideo->InitStreams(AVMEDIA_TYPE_VIDEO);
     std::string uniColor = "uniColor";
     text.AddComponent<Material>(&fontShader)->SetUniformValue(uniColor, glm::vec4{ 1, 1, 1, 1 });

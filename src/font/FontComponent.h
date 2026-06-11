@@ -6,6 +6,38 @@
 #include "../render/Mesh.h"
 #include "../render/Material.h"
 
+#include <unicode/ubidi.h>
+#include <hb.h>
+
+void TestICU() {
+    UErrorCode status = U_ZERO_ERROR;
+    // LTR текст
+    const char16_t* ltr = u"Hello World";
+    UBiDi* bidi = ubidi_open();
+    ubidi_setPara(bidi, (const UChar*)ltr, -1, UBIDI_DEFAULT_LTR, nullptr, &status);
+    std::cout << "ICU LTR: " << (ubidi_getDirection(bidi) == UBIDI_LTR ? "OK" : "FAIL") << std::endl;
+    ubidi_close(bidi);
+    std::cout << "ICU works!" << std::endl;
+}
+
+void TestHarfBuzz() {
+    hb_buffer_t* buf = hb_buffer_create();
+    hb_buffer_add_utf8(buf, "Hello", -1, 0, -1);
+    hb_buffer_guess_segment_properties(buf);
+
+    hb_font_t* font = hb_font_create(hb_face_get_empty());
+    hb_shape(font, buf, nullptr, 0);
+
+    unsigned int count;
+    hb_glyph_position_t* pos = hb_buffer_get_glyph_positions(buf, &count);
+    std::cout << "HarfBuzz glyph count: " << count << std::endl;
+    for (unsigned int i = 0; i < count; i++)
+        std::cout << "  glyph " << i << " x_advance: " << (pos[i].x_advance >> 6) << std::endl;
+
+    hb_buffer_destroy(buf);
+    hb_font_destroy(font);
+    std::cout << "HarfBuzz works!" << std::endl;
+}
 
 class StaticText : public Component
 {
