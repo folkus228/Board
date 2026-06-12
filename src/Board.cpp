@@ -306,6 +306,7 @@ int main() {
     Video* Cevideo = video.AddComponent<Video>();
     Cevideo->LoadVideo("C:\\all\\proj\\VisualStudio\\Board\\res\\videos\\3840x2160nature.mp4"); // 3840x2160nature
     Cevideo->InitStreams(AVMEDIA_TYPE_VIDEO);
+    Cevideo->Pausa();
     std::string uniColor = "uniColor";
     text.AddComponent<Material>(&fontShader)->SetUniformValue(uniColor, glm::vec4{ 1, 1, 1, 1 });
     text.AddComponent<StaticText>(1);

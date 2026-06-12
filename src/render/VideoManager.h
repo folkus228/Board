@@ -48,7 +48,24 @@ public:
             av_frame_free(&sd._nextFrame);
         }
     }
-    
+    inline void Start() override
+    {
+        for (auto& sd : _streams) {
+            NextFrame(sd);
+            NextFrame(sd);
+        }
+
+        AVFrame* frame = _streams[0]._thisFrame;
+        _sws_ctx = sws_getContext(
+            frame->width, frame->height, (AVPixelFormat)frame->format,
+            frame->width, frame->height, AV_PIX_FMT_RGB24,
+            SWS_BILINEAR, nullptr, nullptr, nullptr
+        );
+
+        texID = CreateFrameTextureTestFicha(_streams[0]);
+        std::string ourTexture = "ourTexture";
+        GetObject()->GetComponent<Material>()->SetTextureValue(ourTexture, texID);
+    }
     void LoadVideo(const char* path, size_t streamsCount = 1) {
 
         if (avformat_open_input(&_f_ctx, path, nullptr, nullptr) < 0) {
@@ -121,28 +138,9 @@ public:
                     _packet_queues[idx].push(copy);
                 }
             }
-
             // av_read_frame не прочитал ни одного пакета
             if (!read_any_packet) avcodec_send_packet(sd.c_ctx, nullptr); // Передаем nullptr. Кодек понимает, что это финал, и подготавливает застрявшие кадры    
         }
-    }
-    inline void Start() override
-    {
-        for (auto& sd : _streams) {
-            NextFrame(sd);
-            NextFrame(sd);
-        }
-
-        AVFrame* frame = _streams[0]._thisFrame;
-        _sws_ctx = sws_getContext(
-            frame->width, frame->height, (AVPixelFormat)frame->format,
-            frame->width, frame->height, AV_PIX_FMT_RGB24,
-            SWS_BILINEAR, nullptr, nullptr, nullptr
-        );
-
-        texID = CreateFrameTextureTestFicha(_streams[0]);
-        std::string ourTexture = "ourTexture";
-        GetObject()->GetComponent<Material>()->SetTextureValue(ourTexture, texID);
     }
     void Update() override
     {
@@ -153,10 +151,12 @@ public:
         time += Time::GetDeltaTime();
         for (auto& sd : _streams) {
             double nextTime = sd._nextFrame->pts * av_q2d(sd.stream->time_base);
-            while (nextTime < time)
+            if (nextTime < time)
             {
                 NextFrame(sd);
                 nextTime = sd._nextFrame->pts * av_q2d(sd.stream->time_base);
+                if (time > nextTime)
+                    time = sd._thisFrame->pts * av_q2d(sd.stream->time_base);
             }
         }
         // processing current frame
