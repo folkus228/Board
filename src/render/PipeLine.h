@@ -11,6 +11,7 @@
 
 #include <vector>
 #include <unordered_map>
+#include <algorithm>
 
 class PipeLine;
 
@@ -99,7 +100,7 @@ public:
 			uniformNameBuffer = "uViewProj";
 			shader->Use();
 			shader->SetUniform(uniformNameBuffer, camera_matrix);
-			for (auto& [obj, mesh, material] : vec)
+			for (auto& [obj, mesh, material, subm] : vec)
 			{
 				Transform2D* t = obj->GetT();
 				uniformNameBuffer = "uPosition";
@@ -112,7 +113,8 @@ public:
 				material->Bind();
 
 				mesh->Use();
-				mesh->Draw();
+				
+				mesh->Draw(subm->start, subm->count);
 			}
 		}
 		for (auto& [shader, pd] : scene._particles)

@@ -169,7 +169,7 @@ public:
         int dst_stride[1] = { sd._thisFrame->width * 3 };
         sws_scale(_sws_ctx, sd._thisFrame->data, sd._thisFrame->linesize, 0, sd._thisFrame->height, dst, dst_stride);
         // rgb_buffer — готовый RGB, можно грузить в текстуру
-        return TextureManager::LoadTexture(sd._thisFrame->height, sd._thisFrame->width, rgb_buffer.data(), GL_RGB);
+        return TextureManager::CreateTexture(sd._thisFrame->height, sd._thisFrame->width, rgb_buffer.data(), GL_RGB);
     }
     void SetFrameTextureTestFicha(AVFrame*& frame)
     {
@@ -186,6 +186,7 @@ public:
     void Pausa() { isPausa = !isPausa; }
     void Pausa(bool pausa) { isPausa = pausa; }
     bool IsPausa() { return isPausa; }
+    unsigned int GetTextureIdxTestFicha() { return texID; }
 private:
     template<typename... AVMT>
     void _InitStreams(int idx, AVMediaType type, AVMT... types)

@@ -13,6 +13,7 @@ struct RenderData
 	Object* obj;
 	Mesh* mesh; 
 	Material* material;
+	SubMeshData* subm;
 };
 
 struct ParticleData
@@ -25,18 +26,20 @@ struct ParticleData
 class Scene
 {
 public:
-	void AddRenderUnit(Object* obj, Mesh* mesh, Material* material)
+	void AddRenderUnit(Object* obj, Mesh* mesh, Material* material, SubMeshData* subm)
 	{
-		_shaders[material->_shader].push_back({ obj, mesh, material });
+		_shaders[material->_shader].push_back({ obj, mesh, material, subm });
 	}
 	void AddObj(Object* obj)
 	{
 		_objects.push_back(obj);
 		if (obj->HasComponent<Mesh>())
 		{
-			Material* mat = obj->GetComponent<Material>();
 			Mesh* mesh = obj->GetComponent<Mesh>();
-			_shaders[mat->_shader].push_back({ obj, mesh, mat });
+			for (auto& submd : mesh->_subMeshes)
+			{
+				AddRenderUnit(obj, mesh, submd.mat, &submd);
+			}
 		}
 		if (obj->HasComponent<ParticleSystem>())
 		{

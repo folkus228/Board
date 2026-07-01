@@ -28,9 +28,7 @@ public:
             _shader->SetUniform(name, value);
         int slot = 0;
         for (auto& [name, texID] : _textures) {
-            GLuint tex = TextureManager::GetTexture(texID);
-            glActiveTexture(GL_TEXTURE0 + slot);
-            glBindTexture(GL_TEXTURE_2D, tex);
+            TextureManager::BindTexture(texID, slot);
             _shader->SetUniform(name, slot);
             slot++;
         }

@@ -1,18 +1,18 @@
 #version 330 core
 
 layout (location = 0) in vec2 aPos;
-layout (location = 1) in vec2 aTexCoord; // UV-координаты из атласа
+layout (location = 1) in vec2 aTexCoord;
+layout (location = 2) in float aLayout;
 
-out vec2 vTexCoord;
+out vec3 vTexCoord;
 
 uniform vec3 uPosition;
 uniform float uRotation;
 uniform vec2 uScale;
-
 uniform mat4 uViewProj;
 
 void main() {
-    vTexCoord = aTexCoord;
+    vTexCoord = vec3(aTexCoord, aLayout);
     vec2 scaledPos = aPos * uScale;
     float cosR = cos(uRotation);
     float sinR = sin(uRotation);
@@ -20,6 +20,7 @@ void main() {
         scaledPos.x * cosR - scaledPos.y * sinR,
         scaledPos.x * sinR + scaledPos.y * cosR
     );
+
     vec4 worldPos = vec4(rotatedPos + uPosition.xy, uPosition.z, 1.0);
     gl_Position = uViewProj * worldPos;
 }

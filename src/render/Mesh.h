@@ -4,6 +4,15 @@
 #include <vector>
 #include "../object/Component.h"
 
+class Material;
+
+struct SubMeshData
+{
+    Material* mat;
+    unsigned int start;
+    GLsizei count;
+};
+
 class Mesh : public Component
 {
 public:
@@ -31,6 +40,7 @@ public:
     {
         glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, _EBO);
         glBufferData(GL_ELEMENT_ARRAY_BUFFER, _elementCount * sizeof(unsigned int), elementsData, usage);
+        
     }
 
     void UpdateData(const void* data, GLsizeiptr byteSize, GLintptr offset)
@@ -59,13 +69,13 @@ public:
         glBindVertexArray(_VAO);
     }
 
-    inline void Draw()
+    inline void Draw(unsigned int& start, GLsizei& count)
     {
-        glDrawElements(_drawType, _elementCount, GL_UNSIGNED_INT, 0);
+        glDrawElements(_drawType, count, GL_UNSIGNED_INT, (void*)(start * sizeof(GLuint)));
     }
-    inline void SetElentsCount(int elementsCount) { _elementCount = elementsCount; }
+    std::vector<SubMeshData> _subMeshes;
 private:
+    GLsizeiptr _elementCount;
     GLenum _drawType;
-    int _elementCount;
     GLuint _VAO, _VBO, _EBO;
 };
