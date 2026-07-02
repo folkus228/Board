@@ -16,6 +16,7 @@
 #include "font/FontManager.h"
 #include "font/FontComponent.h"
 #include "render/ParticleManager.h"
+#include "io/IOManager.h"
 
 struct DataStorage
 {
