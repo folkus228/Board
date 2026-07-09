@@ -1,21 +1,24 @@
 {
   "name": "board",
   "version": "0.1.0",
-  "dependencies": [
-    "icu",
-    "ffmpeg",
-    "harfbuzz",
-    "freetype",
-    {
-      "name": "plutosvg",
-      "features": ["freetype"]
-    },
-    "glfw3",
-    "glm",
-    {
-      "name": "imgui",
-      "features": ["opengl3-binding", "glfw-binding"],
-      "$comment": "Сюда потом можно добавить freetype-binding"
-    }
-  ]
+    "dependencies": [
+        "icu",
+        "ffmpeg",
+        "harfbuzz",
+        "freetype",
+        {
+            "name": "plutosvg",
+            "features": [ "freetype" ]
+        },
+        "glfw3",
+        "glm",
+        {
+            "name": "imgui",
+            "features": [ "opengl3-binding", "glfw-binding" ],
+            "$comment": "Сюда потом можно добавить freetype-binding"
+        },
+        "enkits",
+        "boost-fiber",
+        "boost-context"
+    ]
 }

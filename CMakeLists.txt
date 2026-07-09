@@ -25,6 +25,8 @@ find_package(plutosvg CONFIG REQUIRED)
 find_package(imgui CONFIG REQUIRED)
 find_package(glfw3 CONFIG REQUIRED)
 find_package(glm CONFIG REQUIRED)
+find_package(enkiTS REQUIRED)
+find_package(Boost REQUIRED COMPONENTS fiber context)
 
 add_subdirectory(libs/glad)
 add_subdirectory(src/render)
@@ -48,7 +50,10 @@ target_link_libraries(Board PRIVATE
     ICU::i18n
     ICU::dt
     harfbuzz
-    module_render		
+    module_render	
+    enkiTS::enkiTS
+    Boost::fiber
+    Boost::context
 )
 
 target_include_directories(module_render PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
